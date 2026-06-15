@@ -33,14 +33,16 @@ extensions.configure<ApplicationExtension> {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
-  val keystoreProps =
-    Properties().apply { load(FileInputStream("${project.rootDir}/keystore.properties")) }
-  signingConfigs {
-    create("release") {
-      keyAlias = keystoreProps["keyAlias"].toString()
-      keyPassword = keystoreProps["keyPassword"].toString()
-      storeFile = file(keystoreProps["storeFile"].toString())
-      storePassword = keystoreProps["storePassword"].toString()
+  val keystoreFile = File("${project.rootDir}/keystore.properties")
+  if (keystoreFile.exists()) {
+    val keystoreProps = Properties().apply { load(FileInputStream(keystoreFile)) }
+    signingConfigs {
+      create("release") {
+        keyAlias = keystoreProps["keyAlias"].toString()
+        keyPassword = keystoreProps["keyPassword"].toString()
+        storeFile = file(keystoreProps["storeFile"].toString())
+        storePassword = keystoreProps["storePassword"].toString()
+      }
     }
   }
 
@@ -49,7 +51,9 @@ extensions.configure<ApplicationExtension> {
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      if (signingConfigs.findByName("release") != null) {
+        signingConfig = signingConfigs.getByName("release")
+      }
     }
     create("debugApp") {
       isDebuggable = true
