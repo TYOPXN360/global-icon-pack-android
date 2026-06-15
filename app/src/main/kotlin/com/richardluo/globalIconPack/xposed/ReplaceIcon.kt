@@ -174,7 +174,6 @@ class ReplaceIcon(
           info.packageName ?: return@runBlockReplaceIconResId
           val sc = getSC() ?: return@runBlockReplaceIconResId
           replaceIconInItemInfo(info, sc.getId(getComponentName(info)), sc)
-          logD("Single replaced: ${info.packageName}/${info.name}")
         }
       }
     }
@@ -239,7 +238,6 @@ class ReplaceIcon(
           info.packageName ?: return@runBlockReplaceIconResId
           val sc = getSC() ?: return@runBlockReplaceIconResId
           replaceIconInItemInfo(info, sc.getId(getComponentName(info)), sc)
-          logD("Single replaced: ${info.packageName}/${info.name}")
         }
       }
     }
@@ -267,7 +265,6 @@ class ReplaceIcon(
               ?: return@runBlockReplaceIconResId
           curReplacer(list.asSequence(), sc)
           replacer.set(null)
-          logD("Batch replaced ParceledListSlice: " + list.size)
         }
       }
     }
@@ -319,7 +316,6 @@ private inline fun HookBuilder.batchReplaceIconHook(
       result = callOriginalMethod()
       val list = getList() ?: return@runBlockReplaceIconResId
       replacer(list.asSequence(), sc)
-      logD("Batch replaced: " + list.count())
     }
   }
 }
