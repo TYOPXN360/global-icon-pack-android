@@ -1,9 +1,11 @@
 package com.richardluo.globalIconPack.iconPack.source
 
+import android.app.AndroidAppHelper
 import android.content.ComponentName
 import android.content.res.Resources
 import android.content.res.XmlResourceParser
 import android.graphics.drawable.Drawable
+import com.richardluo.globalIconPack.iconPack.IconPackProvider
 import com.richardluo.globalIconPack.iconPack.model.CalendarIconEntry
 import com.richardluo.globalIconPack.iconPack.model.ClockIconEntry
 import com.richardluo.globalIconPack.iconPack.model.ClockMetadata
@@ -14,6 +16,7 @@ import com.richardluo.globalIconPack.iconPack.model.IconPackConfig
 import com.richardluo.globalIconPack.iconPack.model.NormalIconEntry
 import com.richardluo.globalIconPack.iconPack.model.ResourceOwner
 import com.richardluo.globalIconPack.iconPack.model.defaultIconPackConfig
+import com.richardluo.globalIconPack.iconPack.useFirstRow
 import com.richardluo.globalIconPack.utils.get
 import com.richardluo.globalIconPack.utils.log
 import com.richardluo.globalIconPack.utils.parseXML
@@ -29,7 +32,8 @@ class LocalSource(pack: String, config: IconPackConfig = defaultIconPackConfig) 
   private val iconEntryList: List<IconEntry>
 
   init {
-    val info = loadIconPack(res, pack)
+    // Try cross-process cached parsed info first; fall back to local parse on failure
+    val info = loadIconPackFromProvider(pack) ?: loadIconPack(res, pack)
     iconFallback =
       if (config.iconFallback)
         IconFallback(FallbackSettings(info), ::getIcon, config).orNullIfEmpty()
@@ -41,6 +45,16 @@ class LocalSource(pack: String, config: IconPackConfig = defaultIconPackConfig) 
         indexMap[cn] = i++
         entry
       }
+  }
+
+  private fun loadIconPackFromProvider(pack: String): IconPackInfo? {
+    val ctx = AndroidAppHelper.currentApplication() ?: return null
+    return runCatching {
+        ctx.contentResolver
+          .query(IconPackProvider.PACK_INFO, null, null, arrayOf(pack), null)
+          ?.useFirstRow { IconPackInfoSerializer.fromBytes(it.getBlob(0)) }
+      }
+      .getOrNull { log(it) }
   }
 
   override fun getId(cn: ComponentName) =
@@ -72,7 +86,7 @@ interface IconPackInfo {
   val clockIconEntryMap: Map<String, ClockIconEntry>
 }
 
-private class MutableIconPackInfo : IconPackInfo {
+class MutableIconPackInfo : IconPackInfo {
   override val iconBacks = mutableListOf<String>()
   override val iconUpons = mutableListOf<String>()
   override val iconMasks = mutableListOf<String>()

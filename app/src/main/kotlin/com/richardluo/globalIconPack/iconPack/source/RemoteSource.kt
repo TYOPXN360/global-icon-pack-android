@@ -17,10 +17,9 @@ import com.richardluo.globalIconPack.iconPack.useFirstRow
 import com.richardluo.globalIconPack.iconPack.useMapToArray
 import com.richardluo.globalIconPack.utils.call
 import com.richardluo.globalIconPack.utils.classOf
-import com.richardluo.globalIconPack.utils.getOrPut
-import com.richardluo.globalIconPack.utils.getOrPutNullable
 import com.richardluo.globalIconPack.utils.method
 import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 private var waitingForBootCompleted = true
 
@@ -33,7 +32,7 @@ class RemoteSource(pack: String, config: IconPackConfig = defaultIconPackConfig)
   private val iconPackAsFallback = config.iconPackAsFallback
   private val iconFallback: IconFallback?
 
-  private val indexMap = mutableMapOf<ComponentName, Int?>()
+  private val indexMap = ConcurrentHashMap<ComponentName, Int?>()
   private val iconEntryList = Collections.synchronizedList(mutableListOf<IconResolver>())
 
   private val contentResolver = AndroidAppHelper.currentApplication().contentResolver
@@ -54,62 +53,97 @@ class RemoteSource(pack: String, config: IconPackConfig = defaultIconPackConfig)
             IconFallback(FallbackSettings.from(it.getBlob(0)), ::getIcon, config).orNullIfEmpty()
           }
       else null
+    preheatInBackground()
+  }
+
+  private fun preheatInBackground() {
+    Thread {
+      runCatching {
+          contentResolver.query(IconPackProvider.ALL_ICONS, null, null, arrayOf(pack), null)
+        }
+        .getOrNull()
+        ?.use { c ->
+          val pkgIdx = c.getColumnIndexOrThrow("packageName")
+          val clsIdx = c.getColumnIndexOrThrow("className")
+          while (c.moveToNext()) {
+            val cn = ComponentName(c.getString(pkgIdx), c.getString(clsIdx))
+            indexMap.computeIfAbsent(cn) {
+              val entry = IconResolver.from(c)
+              iconEntryList.add(entry)
+              iconEntryList.size - 1
+            }
+          }
+        }
+    }.apply { isDaemon = true }.start()
   }
 
   override fun getId(cn: ComponentName) =
-    synchronized(indexMap) {
-      indexMap.getOrPutNullable(cn) {
-        contentResolver
-          .query(
-            IconPackProvider.ICON,
-            null,
-            null,
-            arrayOf(pack, iconPackAsFallback.toString(), cn.flattenToString()),
-            null,
-          )
-          ?.useFirstRow { c ->
-            val entry = IconResolver.from(c)
-            val fallback = c.getIntOrNull(GetIconCol.Fallback.ordinal) == 1
-            iconEntryList.add(entry)
-            (iconEntryList.size - 1).also {
-              if (fallback) indexMap[getComponentName(cn.packageName)] = it
-            }
+    indexMap.computeIfAbsent(cn) {
+      contentResolver
+        .query(
+          IconPackProvider.ICON,
+          null,
+          null,
+          arrayOf(pack, iconPackAsFallback.toString(), cn.flattenToString()),
+          null,
+        )
+        ?.useFirstRow { c ->
+          val entry = IconResolver.from(c)
+          val fallback = c.getIntOrNull(GetIconCol.Fallback.ordinal) == 1
+          iconEntryList.add(entry)
+          (iconEntryList.size - 1).also {
+            if (fallback) indexMap[getComponentName(cn.packageName)] = it
           }
-      }
+        }
     }
 
-  override fun getId(cnList: List<ComponentName>) =
-    synchronized(indexMap) {
-      indexMap.getOrPut(cnList) { misses ->
-        contentResolver
-          .query(
-            IconPackProvider.ICON,
-            null,
-            null,
-            arrayOf(
-              pack,
-              iconPackAsFallback.toString(),
-              *misses.map { it.flattenToString() }.toTypedArray(),
-            ),
-            null,
-          )
-          ?.useMapToArray(misses.size) { i, c ->
-            val cn = misses[i]
-            if (c.getIntOrNull(GetIconCol.Fallback.ordinal) == 1 || cn.className.isEmpty()) {
-              // Is fallback
-              val cn = getComponentName(cn.packageName)
-              if (indexMap.contains(cn)) indexMap[cn]
-              else {
-                iconEntryList.add(IconResolver.from(c))
-                (iconEntryList.size - 1).also { indexMap[cn] = it }
-              }
-            } else {
-              iconEntryList.add(IconResolver.from(c))
-              iconEntryList.size - 1
-            }
-          } ?: arrayOfNulls(misses.size)
-      }
+  override fun getId(cnList: List<ComponentName>): List<Int?> {
+    val result = arrayOfNulls<Int>(cnList.size)
+    val pending = ArrayList<Int>(cnList.size)
+    for (i in cnList.indices) {
+      val cn = cnList[i]
+      if (indexMap.containsKey(cn)) result[i] = indexMap[cn] else pending.add(i)
     }
+    if (pending.isEmpty()) return result.asList()
+    val misses = pending.map { cnList[it] }
+    val queryResult =
+      contentResolver
+        .query(
+          IconPackProvider.ICON,
+          null,
+          null,
+          arrayOf(
+            pack,
+            iconPackAsFallback.toString(),
+            *misses.map { it.flattenToString() }.toTypedArray(),
+          ),
+          null,
+        )
+        ?.useMapToArray(misses.size) { i, c ->
+          val cn = misses[i]
+          if (c.getIntOrNull(GetIconCol.Fallback.ordinal) == 1 || cn.className.isEmpty()) {
+            // Is fallback
+            val pkg = getComponentName(cn.packageName)
+            indexMap[pkg]?.also { return@useMapToArray it }
+              ?: run {
+                val entry = IconResolver.from(c)
+                iconEntryList.add(entry)
+                (iconEntryList.size - 1).also { indexMap[pkg] = it }
+              }
+          } else {
+            val entry = IconResolver.from(c)
+            iconEntryList.add(entry)
+            iconEntryList.size - 1
+          }
+        } ?: arrayOfNulls(misses.size)
+    for ((qi, ri) in pending.withIndex()) {
+      val cn = misses[qi]
+      val v = queryResult.getOrNull(qi)
+      indexMap[cn] = v
+      result[ri] = v
+    }
+    return result.asList()
+  }
 
   override fun getIconEntry(id: Int): IconEntry? = iconEntryList.getOrNull(id)
 

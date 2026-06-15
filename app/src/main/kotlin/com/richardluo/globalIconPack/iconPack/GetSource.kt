@@ -26,6 +26,18 @@ fun getSC(): Source? {
   return sc
 }
 
+private fun isPackModifiedViaProvider(pack: String): Boolean {
+  // Default to true (use DB) if check fails, to preserve current behavior
+  val resolver = AndroidAppHelper.currentApplication()?.contentResolver ?: return true
+  return runCatching {
+      resolver
+        .query(IconPackProvider.IS_PACK_MODIFIED, null, null, arrayOf(pack), null)
+        ?.useFirstRow { it.getInt(0) != 0 }
+        ?: true
+    }
+    .getOrDefault(true)
+}
+
 private fun initSC() {
   AndroidAppHelper.currentApplication() ?: return
   runCatching {
@@ -36,7 +48,9 @@ private fun initSC() {
       sc =
         when (pref.get(Pref.MODE)) {
           MODE_SHARE -> ShareSource(pack, config)
-          MODE_PROVIDER -> RemoteSource(pack, config)
+          MODE_PROVIDER ->
+            if (isPackModifiedViaProvider(pack)) RemoteSource(pack, config)
+            else LocalSource(pack, config)
           else -> LocalSource(pack, config)
         }
     }

@@ -245,6 +245,14 @@ class IconPackDB(
       add(it)
     }
 
+  fun getAllIconsForPack(pack: String) =
+    readableDatabase.rawQueryList(
+      "SELECT packageName, className, entry, pack, id FROM ${pt(pack)}",
+      emptyList(),
+    ) {
+      add(it)
+    }
+
   private fun insertIcons(
     db: SQLiteDatabase,
     pack: String,
