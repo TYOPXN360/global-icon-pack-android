@@ -194,10 +194,9 @@ class ReplaceIcon(
       before {
         runBlockReplaceIconResId {
           result = callOriginalMethod()
-          val info = thisObject.asType<PackageInfo>() ?: return@runBlockReplaceIconResId
+          val info = thisObject as? PackageInfo ?: return@runBlockReplaceIconResId
           val sc = getSC() ?: return@runBlockReplaceIconResId
-          if (replaceIconInItemInfos(packageInfoTransform(info), sc) > 0)
-            logD("Batch replaced PackageInfo: ${info.packageName}")
+          replaceIconInItemInfos(packageInfoTransform(info), sc)
         }
       }
     }
@@ -226,10 +225,9 @@ class ReplaceIcon(
       before {
         runBlockReplaceIconResId {
           result = callOriginalMethod()
-          val info = result.asType<PackageInfo>() ?: return@runBlockReplaceIconResId
+          val info = result as? PackageInfo ?: return@runBlockReplaceIconResId
           val sc = getSC() ?: return@runBlockReplaceIconResId
-          if (replaceIconInItemInfos(packageInfoTransform(info), sc) > 0)
-            logD("Batch replaced PackageInfo: ${info.packageName}")
+          replaceIconInItemInfos(packageInfoTransform(info), sc)
         }
       }
     }
