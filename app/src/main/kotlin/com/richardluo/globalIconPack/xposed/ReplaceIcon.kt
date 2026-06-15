@@ -194,10 +194,10 @@ class ReplaceIcon(
       before {
         runBlockReplaceIconResId {
           result = callOriginalMethod()
-          val info = thisObject as? PackageInfo ?: return@runBlockReplaceIconResId
+          val info = thisObject.asType<PackageInfo>() ?: return@runBlockReplaceIconResId
           val sc = getSC() ?: return@runBlockReplaceIconResId
-          replaceIconInItemInfos(packageInfoTransform(info), sc)
-          logD("Batch replaced PackageInfo: ${info.packageName}")
+          if (replaceIconInItemInfos(packageInfoTransform(info), sc) > 0)
+            logD("Batch replaced PackageInfo: ${info.packageName}")
         }
       }
     }
@@ -226,10 +226,10 @@ class ReplaceIcon(
       before {
         runBlockReplaceIconResId {
           result = callOriginalMethod()
-          val info = result as? PackageInfo ?: return@runBlockReplaceIconResId
+          val info = result.asType<PackageInfo>() ?: return@runBlockReplaceIconResId
           val sc = getSC() ?: return@runBlockReplaceIconResId
-          replaceIconInItemInfos(packageInfoTransform(info), sc)
-          logD("Batch replaced PackageInfo: ${info.packageName}")
+          if (replaceIconInItemInfos(packageInfoTransform(info), sc) > 0)
+            logD("Batch replaced PackageInfo: ${info.packageName}")
         }
       }
     }
@@ -334,9 +334,15 @@ private fun replaceIconInResolveInfo(ri: ResolveInfo) {
   iconResourceIdF?.set(ri, icon)
 }
 
-private fun replaceIconInItemInfos(seq: Sequence<PackageItemInfo>, sc: Source) {
+private fun replaceIconInItemInfos(seq: Sequence<PackageItemInfo>, sc: Source): Int {
   val ids = sc.getId(seq.map { getComponentName(it) }.toList())
-  seq.forEachIndexed { i, info -> replaceIconInItemInfo(info, ids.getOrNull(i), sc) }
+  var replaced = 0
+  seq.forEachIndexed { i, info ->
+    val id = ids.getOrNull(i)
+    if (id != null) replaced++
+    replaceIconInItemInfo(info, id, sc)
+  }
+  return replaced
 }
 
 private fun ResolveInfo.getComponentInfo(): ComponentInfo? {
