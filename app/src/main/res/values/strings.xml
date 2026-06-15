@@ -21,6 +21,8 @@
     <string name="general_forceMonochrome">Force monochrome</string>
     <string name="general_mergeIconPack">Merge icon pack</string>
     <string name="general_mergeIconPack_summary">Generate a new icon pack from various icon packs.</string>
+    <string name="general_disableLog">Disable log recording</string>
+    <string name="general_disableLog_summary">Suppress info-level logs from hooked apps (Xposed/LSPosed). Helpful when an app updates icons very frequently.</string>
     <string name="general_error_onShareMode">Error occurs when enabling share mode, fallback to provider mode.</string>
 
     <string name="iconPack_settings">Icon pack</string>

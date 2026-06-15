@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Help
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.automirrored.outlined.Shortcut
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Backpack
@@ -183,12 +184,21 @@ object MainPreference {
         title = { TwoLineText(stringResource(R.string.general_forceMonochrome)) },
       )
       myPreference(
-        modifier = listModifiers.bottom,
+        modifier = listModifiers.middle,
         icon = { Icon(Icons.Outlined.Merge, "openMerger") },
         key = "openMerger",
         onClick = { context.startActivity(Intent(context, IconPackMergerActivity::class.java)) },
         title = { TwoLineText(stringResource(R.string.general_mergeIconPack)) },
         summary = { TwoLineText(stringResource(R.string.general_mergeIconPack_summary)) },
+      )
+      spacer()
+      mySwitchPreference(
+        modifier = listModifiers.single,
+        icon = { Icon(Icons.AutoMirrored.Outlined.ListAlt, Pref.DISABLE_LOG.key) },
+        key = Pref.DISABLE_LOG.key,
+        defaultValue = Pref.DISABLE_LOG.def,
+        title = { TwoLineText(stringResource(R.string.general_disableLog)) },
+        summary = { TwoLineText(stringResource(R.string.general_disableLog_summary)) },
       )
     }
   }

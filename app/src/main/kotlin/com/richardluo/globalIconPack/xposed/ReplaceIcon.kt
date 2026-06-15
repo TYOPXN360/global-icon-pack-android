@@ -42,7 +42,6 @@ import com.richardluo.globalIconPack.utils.getAs
 import com.richardluo.globalIconPack.utils.highByte
 import com.richardluo.globalIconPack.utils.hook
 import com.richardluo.globalIconPack.utils.isHighByte
-import com.richardluo.globalIconPack.utils.logD
 import com.richardluo.globalIconPack.utils.method
 import com.richardluo.globalIconPack.utils.runSafe
 import com.richardluo.globalIconPack.utils.withHighByte

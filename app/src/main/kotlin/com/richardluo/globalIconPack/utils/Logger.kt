@@ -3,6 +3,8 @@ package com.richardluo.globalIconPack.utils
 import android.app.AndroidAppHelper
 import android.util.Log
 import com.richardluo.globalIconPack.BuildConfig
+import com.richardluo.globalIconPack.Pref
+import com.richardluo.globalIconPack.get
 import de.robv.android.xposed.XposedBridge
 
 private const val TAG = "[Global Icon Pack]"
@@ -10,11 +12,15 @@ private const val TAG = "[Global Icon Pack]"
 val currentPackageName: String by lazy { AndroidAppHelper.currentPackageName() }
 
 fun log(text: String) {
+  if (isInMod && runCatching { WorldPreference.get().get(Pref.DISABLE_LOG) }.getOrDefault(false))
+    return
   if (isInMod) XposedBridge.log("$TAG $currentPackageName: $text")
   else Log.i("LSPosed-Bridge", "$TAG $text")
 }
 
 fun log(t: Throwable) {
+  if (isInMod && runCatching { WorldPreference.get().get(Pref.DISABLE_LOG) }.getOrDefault(false))
+    return
   if (isInMod) XposedBridge.log("$TAG $currentPackageName: ${t.stackTraceToString()}")
   else Log.e("LSPosed-Bridge", "$TAG ${t.stackTraceToString()}")
 }
